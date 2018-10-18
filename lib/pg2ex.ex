@@ -1,4 +1,38 @@
 defmodule Pg2ex do
+
+  @spec register_name(atom(), pid()) :: :yes | :no
+    def register_name(group_name, pid) do
+    try do
+      start()
+      create(group_name)
+      join(group_name, pid)
+      :yes
+    catch
+      :exit, _ -> :no
+    end
+  end
+
+  @spec unregister_name(atom()) :: any()
+  def unregister_name(group_name) do
+    Pg2ex.leave(group_name, self())
+  end
+
+  @spec whereis_name(atom()) :: pid() | :undefined
+  def whereis_name(group_name) do
+    case Pg2ex.get_closest_pid(group_name) do
+      {:error, _} -> :undefined
+      pid -> pid
+    end
+  end
+
+  @spec send(atom(), any()) :: pid()
+  def send(group_name, msg) do
+    case Pg2ex.whereis_name(group_name) do
+      :undefined -> exit({:badarg, {group_name, msg}})
+      pid -> Kernel.send(pid, msg); pid
+    end
+  end
+
   @spec create(atom()) :: :ok
   def create(group_name) do
     :pg2.create(group_name)
